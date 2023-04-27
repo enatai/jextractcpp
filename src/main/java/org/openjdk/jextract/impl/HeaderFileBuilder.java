@@ -28,11 +28,8 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.ValueLayout;
-import java.lang.invoke.MethodHandle;
-
 import org.openjdk.jextract.Declaration;
 import org.openjdk.jextract.Type;
 
@@ -83,7 +80,8 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         boolean isVarargs = funcTree.type().varargs();
         boolean needsAllocator = descriptor.returnLayout().isPresent() &&
                 descriptor.returnLayout().get() instanceof GroupLayout;
-        emitFunctionWrapper(javaName, nativeName, descriptor, needsAllocator, isVarargs, parameterNames, funcTree);
+        emitDocComment(funcTree);
+        emitFunctionWrapper(MEMBER_MODS, javaName, nativeName, descriptor, needsAllocator, isVarargs, parameterNames, funcTree);
     }
 
     public void addConstant(Declaration.Constant constantTree, String javaName, Class<?> javaType) {
@@ -93,7 +91,7 @@ class HeaderFileBuilder extends ClassSourceBuilder {
 
     // private generation
 
-    private static List<String> finalizeParameterNames(List<String> parameterNames, boolean needsAllocator, boolean isVarArg) {
+    public static List<String> finalizeParameterNames(List<String> parameterNames, boolean needsAllocator, boolean isVarArg) {
         List<String> result = new ArrayList<>();
 
         if (needsAllocator) {
@@ -116,7 +114,7 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         return result;
     }
 
-    private static String paramExprs(MethodType type, List<String> parameterNames, boolean isVarArg) {
+    public static String paramExprs(MethodType type, List<String> parameterNames, boolean isVarArg) {
         assert parameterNames.size() >= type.parameterCount();
         StringJoiner sb = new StringJoiner(", ");
         int i = 0;
@@ -130,47 +128,6 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         }
 
         return sb.toString();
-    }
-
-    private void emitFunctionWrapper(String javaName, String nativeName, FunctionDescriptor descriptor, boolean needsAllocator,
-                                     boolean isVarArg, List<String> parameterNames, Declaration decl) {
-        MethodType declType = descriptor.toMethodType();
-        List<String> finalParamNames = finalizeParameterNames(parameterNames, needsAllocator, isVarArg);
-        if (needsAllocator) {
-            declType = declType.insertParameterTypes(0, SegmentAllocator.class);
-        }
-
-        String retType = declType.returnType().getSimpleName();
-        String returnExpr = "";
-        if (!declType.returnType().equals(void.class)) {
-            returnExpr = STR."return (\{retType}) ";
-        }
-        String getterName = mangleName(javaName, MethodHandle.class);
-        String factoryName = isVarArg ?
-                "downcallHandleVariadic" :
-                "downcallHandle";
-        incrAlign();
-        emitDocComment(decl);
-        appendLines(STR."""
-            \{MEMBER_MODS} MethodHandle \{getterName}() {
-                class Holder {
-                    static final FunctionDescriptor DESC = \{descriptorString(2, descriptor)};
-
-                    static final MethodHandle MH = RuntimeHelper.\{factoryName}(\"\{nativeName}\", DESC);
-                }
-                return RuntimeHelper.requireNonNull(Holder.MH, \"\{javaName}\");
-            }
-
-            public static \{retType} \{javaName}(\{paramExprs(declType, finalParamNames, isVarArg)}) {
-                var mh$ = \{getterName}();
-                try {
-                    \{returnExpr}mh$.invokeExact(\{String.join(", ", finalParamNames)});
-                } catch (Throwable ex$) {
-                   throw new AssertionError("should not reach here", ex$);
-                }
-            }
-            """);
-        decrAlign();
     }
 
     private void emitFunctionalInterfaceGetter(String fiName, String javaName) {

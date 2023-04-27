@@ -30,6 +30,7 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.ValueLayout;
 import org.openjdk.jextract.Declaration;
+import org.openjdk.jextract.Declaration.Function;
 import org.openjdk.jextract.Type;
 
 import java.lang.invoke.VarHandle;
@@ -126,6 +127,17 @@ final class StructBuilder extends ClassSourceBuilder implements OutputFactory.Bu
             builder.emitPrivateDefaultConstructor();
             return builder;
         }
+    }
+
+    @Override
+    public void addFunction(Function funcTree, FunctionDescriptor descriptor, String javaName, List<String> parameterNames) {
+        String nativeName = (String)funcTree.getAttribute("LINK").orElse(List.of(funcTree.name())).get(0);
+        boolean isVarargs = funcTree.type().varargs();
+
+        boolean needsAllocator = descriptor.returnLayout().isPresent() &&
+                descriptor.returnLayout().get() instanceof GroupLayout;
+        emitDocComment(funcTree);
+        emitFunctionWrapper(MEMBER_MODS, javaName, nativeName, descriptor, needsAllocator, isVarargs, parameterNames, funcTree);
     }
 
     @Override

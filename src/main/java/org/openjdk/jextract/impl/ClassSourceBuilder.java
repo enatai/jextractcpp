@@ -24,18 +24,20 @@
  */
 package org.openjdk.jextract.impl;
 
-import org.openjdk.jextract.Declaration;
-import org.openjdk.jextract.Type;
-
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.SequenceLayout;
 import java.lang.foreign.StructLayout;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
+import java.util.List;
+import org.openjdk.jextract.Declaration;
+import org.openjdk.jextract.Type;
 
 /**
  * Superclass for .java source generator classes.
@@ -293,5 +295,48 @@ abstract class ClassSourceBuilder {
         }
         builder.append(STR."\{indentString(textBoxIndent)})");
         return builder.toString();
+    }
+
+    // private generation
+
+    protected void emitFunctionWrapper(String mods, String javaName, String nativeName, FunctionDescriptor descriptor, boolean needsAllocator,
+            boolean isVarArg, List<String> parameterNames, Declaration decl) {
+        MethodType declType = descriptor.toMethodType();
+        List<String> finalParamNames = HeaderFileBuilder.finalizeParameterNames(parameterNames, needsAllocator, isVarArg);
+        if (needsAllocator) {
+            declType = declType.insertParameterTypes(0, SegmentAllocator.class);
+        }
+
+        String retType = declType.returnType().getSimpleName();
+        String returnExpr = "";
+        if (!declType.returnType().equals(void.class)) {
+            returnExpr = STR."return (\{retType}) ";
+        }
+        String getterName = mangleName(javaName, MethodHandle.class);
+        String factoryName = isVarArg ?
+                "downcallHandleVariadic" :
+                "downcallHandle";
+        incrAlign();
+        emitDocComment(decl);
+        appendLines(STR."""
+            \{mods} MethodHandle \{getterName}() {
+                class Holder {
+                    static final FunctionDescriptor DESC = \{descriptorString(2, descriptor)};
+
+                    static final MethodHandle MH = RuntimeHelper.\{factoryName}(\"\{nativeName}\", DESC);
+                }
+                return RuntimeHelper.requireNonNull(Holder.MH, \"\{javaName}\");
+            }
+
+            public static \{retType} \{javaName}(\{HeaderFileBuilder.paramExprs(declType, finalParamNames, isVarArg)}) {
+                var mh$ = \{getterName}();
+                try {
+                    \{returnExpr}mh$.invokeExact(\{String.join(", ", finalParamNames)});
+                } catch (Throwable ex$) {
+                   throw new AssertionError("should not reach here", ex$);
+                }
+            }
+            """);
+        decrAlign();
     }
 }
