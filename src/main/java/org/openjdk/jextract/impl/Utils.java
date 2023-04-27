@@ -135,6 +135,13 @@ class Utils {
         };
     }
 
+    static boolean isStructOrUnion(Declaration.Scoped scoped) {
+        return switch (scoped.kind()) {
+            case STRUCT, UNION, CLASS -> true;
+            default -> false;
+        };
+    }
+
     static boolean isEnum(Type type) {
         return switch (type) {
             case Type.Declared declared -> isEnum(declared.tree());

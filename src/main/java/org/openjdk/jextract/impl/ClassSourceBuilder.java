@@ -42,6 +42,8 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.lang.foreign.SegmentAllocator;
+import java.util.List;
 
 /**
  * Superclass for .java source generator classes.
@@ -266,5 +268,94 @@ abstract class ClassSourceBuilder {
         Objects.requireNonNull(decl);
         String declString = DeclarationString.getOrThrow(decl);
         return declString.lines().collect(Collectors.joining("\n * ", " * ", ""));
+    }
+
+    // private generation
+
+    protected void emitFunctionWrapper(String mods, String javaName, String nativeName, boolean needsAllocator,
+                                     boolean isVarArg, List<String> parameterNames, Declaration.Function decl) {
+        MethodType declType = Utils.methodTypeFor(decl.type());
+        List<String> finalParamNames = HeaderFileBuilder.finalizeParameterNames(parameterNames, needsAllocator, isVarArg);
+        if (needsAllocator) {
+            declType = declType.insertParameterTypes(0, SegmentAllocator.class);
+        }
+
+        String retType = declType.returnType().getSimpleName();
+        String returnExpr = "";
+        if (!declType.returnType().equals(void.class)) {
+            returnExpr = STR."return (\{retType}) ";
+        }
+        String getterName = mangleName(javaName, MethodHandle.class);
+        String paramList = String.join(", ", finalParamNames);
+        String traceArgList = paramList.isEmpty() ?
+                STR."\"\{nativeName}\"" :
+                STR."\"\{nativeName}\", \{paramList}";
+        incrAlign();
+        if (!isVarArg) {
+            emitDocComment(decl);
+            appendLines(STR."""
+                \{mods} MethodHandle \{getterName}() {
+                    class Holder {
+                        static final FunctionDescriptor DESC = \{functionDescriptorString(2, decl.type())};
+
+                        static final MethodHandle MH = Linker.nativeLinker().downcallHandle(
+                                \{runtimeHelperName()}.findOrThrow("\{nativeName}"),
+                                DESC);
+                    }
+                    return Holder.MH;
+                }
+
+                public static \{retType} \{javaName}(\{HeaderFileBuilder.paramExprs(declType, finalParamNames, isVarArg)}) {
+                    var mh$ = \{getterName}();
+                    try {
+                        if (TRACE_DOWNCALLS) {
+                            traceDowncall(\{traceArgList});
+                        }
+                        \{returnExpr}mh$.invokeExact(\{paramList});
+                    } catch (Throwable ex$) {
+                       throw new AssertionError("should not reach here", ex$);
+                    }
+                }
+                """);
+        } else {
+            String invokerName = javaName + "$invoker";
+            String invokerFactoryName = javaName + "$makeInvoker";
+            String paramExprs = HeaderFileBuilder.paramExprs(declType, finalParamNames, isVarArg);
+            appendLines(STR."""
+                public interface \{invokerName} {
+                    \{retType} \{javaName}(\{paramExprs});
+                }
+
+                """);
+            emitDocComment(decl);
+            appendLines(STR."""
+                public static \{invokerName} \{invokerFactoryName}(MemoryLayout... layouts) {
+                    FunctionDescriptor baseDesc$ = \{functionDescriptorString(2, decl.type())};
+                    var mh$ = \{runtimeHelperName()}.downcallHandleVariadic("\{nativeName}", baseDesc$, layouts);
+                    return (\{paramExprs}) -> {
+                        try {
+                            if (TRACE_DOWNCALLS) {
+                                traceDowncall(\{traceArgList});
+                            }
+                            \{returnExpr}mh$.invokeExact(\{paramList});
+                        } catch(IllegalArgumentException ex$)  {
+                            throw ex$; // rethrow IAE from passing wrong number/type of args
+                        } catch (Throwable ex$) {
+                           throw new AssertionError("should not reach here", ex$);
+                        }
+                    };
+                }
+
+                """);
+            emitDocComment(decl);
+            String varargsParam = finalParamNames.get(finalParamNames.size() - 1);
+            appendLines(STR."""
+                public static \{retType} \{javaName}(\{paramExprs}) {
+                    MemoryLayout[] inferredLayouts$ = \{runtimeHelperName()}.inferVariadicLayouts(\{varargsParam});
+                    \{returnExpr}\{invokerFactoryName}(inferredLayouts$).\{javaName}(\{String.join(", ", finalParamNames)});
+                }
+                """);
+        }
+        decrAlign();
     }
 }

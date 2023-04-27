@@ -26,14 +26,12 @@ package org.openjdk.jextract.impl;
 
 import org.openjdk.jextract.Declaration;
 import org.openjdk.jextract.Type;
-import org.openjdk.jextract.impl.DeclarationImpl.JavaFunctionalInterfaceName;
 import org.openjdk.jextract.impl.DeclarationImpl.JavaName;
 import org.openjdk.jextract.impl.DeclarationImpl.Skip;
 
 import javax.tools.JavaFileObject;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 /*
  * Scan a header file and generate Java source items for entities defined in that header
@@ -133,7 +131,8 @@ public class OutputFactory implements Declaration.Visitor<Void, Declaration> {
              generateFunctionalInterface(funcTree, returnFunc);
         }
 
-        toplevelBuilder.addFunction(funcTree);
+        currentBuilder.addFunction(funcTree);
+
         return null;
     }
 

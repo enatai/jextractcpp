@@ -123,6 +123,22 @@ final class StructBuilder extends ClassSourceBuilder implements OutputFactory.Bu
     }
 
     @Override
+    public void addFunction(Declaration.Function funcTree) {
+        String nativeName = funcTree.getAttribute(Declaration.ClangAttributes.class)
+                .map(attr -> attr.attributes().get("LINK"))
+                .orElse(List.of(funcTree.name())).get(0);
+        boolean isVarargs = funcTree.type().varargs();
+
+        boolean needsAllocator = Utils.isStructOrUnion(funcTree.type().returnType());
+        List<String> parameterNames = funcTree.parameters().
+                stream().
+                map(JavaName::getOrThrow).
+                toList();
+        emitDocComment(funcTree);
+        emitFunctionWrapper(HeaderFileBuilder.MEMBER_MODS, JavaName.getOrThrow(funcTree), nativeName, needsAllocator, isVarargs, parameterNames, funcTree);
+    }
+
+    @Override
     public void addFunctionalInterface(Declaration parentDecl, Type.Function funcType) {
         incrAlign();
         FunctionalInterfaceBuilder.generate(sourceFileBuilder(), JavaFunctionalInterfaceName.getOrThrow(parentDecl),
