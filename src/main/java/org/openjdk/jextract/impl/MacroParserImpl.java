@@ -63,10 +63,10 @@ class MacroParserImpl implements AutoCloseable {
         this.logger = logger;
     }
 
-    static MacroParserImpl make(TreeMaker treeMaker, Logger logger, TranslationUnit tu, Collection<String> args) {
+    static MacroParserImpl make(TreeMaker treeMaker, Logger logger, TranslationUnit tu, Collection<String> args, boolean cpp) {
         ClangReparser reparser;
         try {
-            reparser = new ClangReparser(tu, args, logger);
+            reparser = new ClangReparser(tu, args, logger, cpp);
         } catch (IOException | Index.ParsingFailedException ex) {
             throw new RuntimeException(ex);
         }
@@ -114,12 +114,12 @@ class MacroParserImpl implements AutoCloseable {
         final TranslationUnit macroUnit;
         final Logger logger;
 
-        public ClangReparser(TranslationUnit tu, Collection<String> args, Logger logger) throws IOException, Index.ParsingFailedException {
+        public ClangReparser(TranslationUnit tu, Collection<String> args, Logger logger, boolean cpp) throws IOException, Index.ParsingFailedException {
             Path precompiled = Files.createTempFile("jextract$", ".pch");
             precompiled.toFile().deleteOnExit();
             tu.save(precompiled);
             this.logger = logger;
-            this.macro = Files.createTempFile("jextract$", ".h");
+            this.macro = Files.createTempFile("jextract$", cpp ? ".hpp" : ".h");
             this.macro.toFile().deleteOnExit();
             String[] patchedArgs = Stream.concat(
                 Stream.of(

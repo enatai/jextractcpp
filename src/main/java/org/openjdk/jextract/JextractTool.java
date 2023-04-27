@@ -64,7 +64,8 @@ import java.util.stream.Stream;
  */
 public final class JextractTool {
 
-    public static final boolean DEBUG = Boolean.getBoolean("jextract.debug");
+    public static final boolean DEBUG = true;//Boolean.getBoolean("jextract.debug");
+    public final Optional<Path> PLATFORM_INCLUDE_PATH = inferPlatformIncludePath();
 
     // error codes
     private static final int SUCCESS       = 0;

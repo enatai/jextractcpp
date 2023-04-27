@@ -27,6 +27,8 @@ package org.openjdk.jextract.impl;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 
+import java.io.File;
+import java.lang.foreign.MemoryLayout;
 import org.openjdk.jextract.Declaration;
 import org.openjdk.jextract.Type;
 import org.openjdk.jextract.impl.DeclarationImpl.JavaName;
@@ -47,8 +49,6 @@ import java.util.stream.IntStream;
  * method is called to get overall generated source string.
  */
 class HeaderFileBuilder extends ClassSourceBuilder {
-
-    private final Set<String> holderClassNames = new HashSet<>();
 
     HeaderFileBuilder(SourceFileBuilder builder, String className, String superName, String runtimeHelperName) {
         super(builder, "public", Kind.CLASS, className, superName, null, runtimeHelperName);
@@ -83,7 +83,8 @@ class HeaderFileBuilder extends ClassSourceBuilder {
                 stream().
                 map(JavaName::getOrThrow).
                 toList();
-        emitFunctionWrapper(JavaName.getOrThrow(funcTree), nativeName, needsAllocator, isVarargs, parameterNames, funcTree);
+        emitDocComment(funcTree);
+        emitFunctionWrapper("public static", JavaName.getOrThrow(funcTree), nativeName, needsAllocator, isVarargs, parameterNames, funcTree);
     }
 
     public void addConstant(Declaration.Constant constantTree) {
@@ -93,7 +94,7 @@ class HeaderFileBuilder extends ClassSourceBuilder {
 
     // private generation
 
-    private static List<String> finalizeParameterNames(List<String> parameterNames, boolean needsAllocator, boolean isVarArg) {
+    static List<String> finalizeParameterNames(List<String> parameterNames, boolean needsAllocator, boolean isVarArg) {
         List<String> result = new ArrayList<>();
 
         if (needsAllocator) {
@@ -116,7 +117,7 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         return result;
     }
 
-    private static String paramExprs(MethodType type, List<String> parameterNames, boolean isVarArg) {
+    public static String paramExprs(MethodType type, List<String> parameterNames, boolean isVarArg) {
         assert parameterNames.size() >= type.parameterCount();
         StringJoiner sb = new StringJoiner(", ");
         int i = 0;
@@ -132,129 +133,6 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         return sb.toString();
     }
 
-    private void emitFunctionWrapper(String javaName, String nativeName, boolean needsAllocator,
-                                     boolean isVarArg, List<String> parameterNames, Declaration.Function decl) {
-        MethodType declType = Utils.methodTypeFor(decl.type());
-        List<String> finalParamNames = finalizeParameterNames(parameterNames, needsAllocator, isVarArg);
-        if (needsAllocator) {
-            declType = declType.insertParameterTypes(0, SegmentAllocator.class);
-        }
-
-        String retType = declType.returnType().getSimpleName();
-        boolean isVoid = declType.returnType().equals(void.class);
-        String returnNoCast = isVoid ? "" : STR."return ";
-        String returnWithCast = isVoid ? "" : STR."\{returnNoCast}(\{retType})";
-        String paramList = String.join(", ", finalParamNames);
-        String traceArgList = paramList.isEmpty() ?
-                STR."\"\{nativeName}\"" :
-                STR."\"\{nativeName}\", \{paramList}";
-        incrAlign();
-        if (!isVarArg) {
-            String holderClass = newHolderClassName(javaName);
-            appendLines(STR."""
-
-                private static class \{holderClass} {
-                    public static final FunctionDescriptor DESC = \{functionDescriptorString(1, decl.type())};
-
-                    public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(
-                                \{runtimeHelperName()}.findOrThrow("\{nativeName}"),
-                                DESC);
-                }
-                """);
-            appendBlankLine();
-            emitDocComment(decl, "Function descriptor for:");
-            appendLines(STR."""
-                public static FunctionDescriptor \{javaName}$descriptor() {
-                    return \{holderClass}.DESC;
-                }
-                """);
-            appendBlankLine();
-            emitDocComment(decl, "Downcall method handle for:");
-            appendLines(STR."""
-                public static MethodHandle \{javaName}$handle() {
-                    return \{holderClass}.HANDLE;
-                }
-                """);
-            emitDocComment(decl);
-            appendLines(STR."""
-            public static \{retType} \{javaName}(\{paramExprs(declType, finalParamNames, isVarArg)}) {
-                var mh$ = \{holderClass}.HANDLE;
-                try {
-                    if (TRACE_DOWNCALLS) {
-                        traceDowncall(\{traceArgList});
-                    }
-                    \{returnWithCast}mh$.invokeExact(\{paramList});
-                } catch (Throwable ex$) {
-                   throw new AssertionError("should not reach here", ex$);
-                }
-            }
-            """);
-        } else {
-            String invokerClassName = newHolderClassName(javaName);
-            String paramExprs = paramExprs(declType, finalParamNames, isVarArg);
-            appendBlankLine();
-            emitDocComment(decl, "Variadic invoker class for:");
-            appendLines(STR."""
-                public static class \{invokerClassName} {
-                    private static final FunctionDescriptor BASE_DESC = \{functionDescriptorString(2, decl.type())};
-                    private static final MemorySegment ADDR = \{runtimeHelperName()}.findOrThrow("\{nativeName}");
-
-                    private final MethodHandle handle;
-                    private final FunctionDescriptor descriptor;
-                    private final MethodHandle spreader;
-
-                    private \{invokerClassName}(MethodHandle handle, FunctionDescriptor descriptor, MethodHandle spreader) {
-                        this.handle = handle;
-                        this.descriptor = descriptor;
-                        this.spreader = spreader;
-                    }
-                """);
-            incrAlign();
-            appendBlankLine();
-            emitDocComment(decl, "Variadic invoker factory for:");
-            appendLines(STR."""
-                public static \{invokerClassName} makeInvoker(MemoryLayout... layouts) {
-                    FunctionDescriptor desc$ = BASE_DESC.appendArgumentLayouts(layouts);
-                    Linker.Option fva$ = Linker.Option.firstVariadicArg(BASE_DESC.argumentLayouts().size());
-                    var mh$ = Linker.nativeLinker().downcallHandle(ADDR, desc$, fva$);
-                    var spreader$ = mh$.asSpreader(Object[].class, layouts.length);
-                    return new \{invokerClassName}(mh$, desc$, spreader$);
-                }
-                """);
-            decrAlign();
-            appendLines(STR."""
-
-                    /**
-                     * {@return the specialized method handle}
-                     */
-                    public MethodHandle handle() {
-                        return handle;
-                    }
-
-                    /**
-                     * {@return the specialized descriptor}
-                     */
-                    public FunctionDescriptor descriptor() {
-                        return descriptor;
-                    }
-
-                    public \{retType} apply(\{paramExprs}) {
-                        try {
-                            if (TRACE_DOWNCALLS) {
-                                traceDowncall(\{traceArgList});
-                            }
-                            \{returnWithCast}spreader.invokeExact(\{paramList});
-                        } catch(IllegalArgumentException | ClassCastException ex$)  {
-                            throw ex$; // rethrow IAE from passing wrong number/type of args
-                        } catch (Throwable ex$) {
-                           throw new AssertionError("should not reach here", ex$);
-                        }
-                    }
-                }
-                """);
-        }
-        decrAlign();
-    }
 
     void emitPrimitiveTypedef(Declaration.Typedef typedefTree, Type.Primitive primType, String name) {
         emitPrimitiveTypedefLayout(name, primType, typedefTree);
@@ -592,11 +470,4 @@ class HeaderFileBuilder extends ClassSourceBuilder {
         decrAlign();
     }
 
-    private String newHolderClassName(String javaName) {
-        String holderClassName = javaName;
-        while (!holderClassNames.add(holderClassName.toLowerCase())) {
-            holderClassName += "$";
-        }
-        return holderClassName;
-    }
 }

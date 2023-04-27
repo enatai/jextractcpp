@@ -129,7 +129,8 @@ public class OutputFactory implements Declaration.Visitor<Void, Declaration> {
              generateFunctionalInterface(funcTree, returnFunc);
         }
 
-        toplevelBuilder.addFunction(funcTree);
+        currentBuilder.addFunction(funcTree);
+
         return null;
     }
 

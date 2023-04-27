@@ -41,10 +41,13 @@ import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.lang.foreign.SegmentAllocator;
 
 /**
  * Superclass for .java source generator classes.
@@ -68,9 +71,10 @@ abstract class ClassSourceBuilder {
     private final String superName;
     private final ClassSourceBuilder enclosing;
     private final String runtimeHelperName;
+    protected final Set<String> holderClassNames = new HashSet<>();
 
     ClassSourceBuilder(SourceFileBuilder builder, String modifiers, Kind kind, String className, String superName,
-                       ClassSourceBuilder enclosing, String runtimeHelperName) {
+            ClassSourceBuilder enclosing, String runtimeHelperName) {
         this.sb = builder;
         this.modifiers = modifiers;
         this.kind = kind;
@@ -108,14 +112,14 @@ abstract class ClassSourceBuilder {
             extendsExpr = " extends " + superName;
         }
         appendLines(STR."""
-            \{modifiers} \{kind.kindName} \{className}\{extendsExpr} {
-            """);
+                \{modifiers} \{kind.kindName} \{className}\{extendsExpr} {
+                """);
     }
 
     final void classEnd() {
         appendLines("""
-            }
-            """);
+                }
+                """);
     }
 
     // Internal generation helpers (used by other builders)
@@ -146,10 +150,10 @@ abstract class ClassSourceBuilder {
     final void emitDefaultConstructor() {
         appendIndentedLines(STR."""
 
-            \{className}() {
-                // Should not be called directly
-            }
-            """);
+                \{className}() {
+                    // Should not be called directly
+                }
+                """);
     }
 
     final void emitDocComment(Declaration decl) {
@@ -158,13 +162,13 @@ abstract class ClassSourceBuilder {
 
     final void emitDocComment(Declaration decl, String header) {
         appendLines(STR."""
-            /**
-            \{!header.isEmpty() ? STR." * \{header}\n" : ""}\
-             * {@snippet lang=c :
-            \{declarationComment(decl)}
-             * }
-             */
-            """);
+                /**
+                \{!header.isEmpty() ? STR." * \{header}\n" : ""}\
+                 * {@snippet lang=c :
+                \{declarationComment(decl)}
+                 * }
+                 */
+                """);
     }
 
     public String mangleName(String javaName, Class<?> type) {
@@ -190,14 +194,14 @@ abstract class ClassSourceBuilder {
 
     String layoutString(Type type, long align) {
         return switch (type) {
-            case Primitive p -> primitiveLayoutString(p, align);
-            case Declared d when Utils.isEnum(d) -> layoutString(((Constant)d.tree().members().get(0)).type(), align);
-            case Declared d when Utils.isStructOrUnion(d) -> alignIfNeeded(STR."\{JavaName.getFullNameOrThrow(d.tree())}.layout()", ClangAlignOf.getOrThrow(d.tree()) / 8, align);
-            case Delegated d when d.kind() == Delegated.Kind.POINTER -> alignIfNeeded(STR."\{runtimeHelperName()}.C_POINTER", 8, align);
-            case Delegated d -> layoutString(d.type(), align);
-            case Function _ -> alignIfNeeded(STR."\{runtimeHelperName()}.C_POINTER", 8, align);
-            case Array a -> STR."MemoryLayout.sequenceLayout(\{a.elementCount().orElse(0L)}, \{layoutString(a.elementType(), align)})";
-            default -> throw new UnsupportedOperationException();
+        case Primitive p -> primitiveLayoutString(p, align);
+        case Declared d when Utils.isEnum(d) -> layoutString(((Constant)d.tree().members().get(0)).type(), align);
+        case Declared d when Utils.isStructOrUnion(d) -> alignIfNeeded(STR."\{JavaName.getFullNameOrThrow(d.tree())}.layout()", ClangAlignOf.getOrThrow(d.tree()) / 8, align);
+        case Delegated d when d.kind() == Delegated.Kind.POINTER -> alignIfNeeded(STR."\{runtimeHelperName()}.C_POINTER", 8, align);
+        case Delegated d -> layoutString(d.type(), align);
+        case Function _ -> alignIfNeeded(STR."\{runtimeHelperName()}.C_POINTER", 8, align);
+        case Array a -> STR."MemoryLayout.sequenceLayout(\{a.elementCount().orElse(0L)}, \{layoutString(a.elementType(), align)})";
+        default -> throw new UnsupportedOperationException();
         };
     }
 
@@ -235,27 +239,27 @@ abstract class ClassSourceBuilder {
 
     private String primitiveLayoutString(Primitive primitiveType, long align) {
         return switch (primitiveType.kind()) {
-            case Bool -> STR."\{runtimeHelperName()}.C_BOOL";
-            case Char -> STR."\{runtimeHelperName()}.C_CHAR";
-            case Short -> alignIfNeeded(STR."\{runtimeHelperName()}.C_SHORT", 2, align);
-            case Int -> alignIfNeeded(STR."\{runtimeHelperName()}.C_INT", 4, align);
-            case Long -> alignIfNeeded(STR."\{runtimeHelperName()}.C_LONG", TypeImpl.IS_WINDOWS ? 4 : 8, align);
-            case LongLong -> alignIfNeeded(STR."\{runtimeHelperName()}.C_LONG_LONG", 8, align);
-            case Float -> alignIfNeeded(STR."\{runtimeHelperName()}.C_FLOAT", 4, align);
-            case Double -> alignIfNeeded(STR."\{runtimeHelperName()}.C_DOUBLE", 8, align);
-            case LongDouble -> TypeImpl.IS_WINDOWS ?
-                    alignIfNeeded(STR."\{runtimeHelperName()}.C_LONG_DOUBLE", 8, align) :
+        case Bool -> STR."\{runtimeHelperName()}.C_BOOL";
+        case Char -> STR."\{runtimeHelperName()}.C_CHAR";
+        case Short -> alignIfNeeded(STR."\{runtimeHelperName()}.C_SHORT", 2, align);
+        case Int -> alignIfNeeded(STR."\{runtimeHelperName()}.C_INT", 4, align);
+        case Long -> alignIfNeeded(STR."\{runtimeHelperName()}.C_LONG", TypeImpl.IS_WINDOWS ? 4 : 8, align);
+        case LongLong -> alignIfNeeded(STR."\{runtimeHelperName()}.C_LONG_LONG", 8, align);
+        case Float -> alignIfNeeded(STR."\{runtimeHelperName()}.C_FLOAT", 4, align);
+        case Double -> alignIfNeeded(STR."\{runtimeHelperName()}.C_DOUBLE", 8, align);
+        case LongDouble -> TypeImpl.IS_WINDOWS ?
+                alignIfNeeded(STR."\{runtimeHelperName()}.C_LONG_DOUBLE", 8, align) :
                     paddingLayoutString(8, 0);
-            case HalfFloat, Char16, WChar -> paddingLayoutString(2, 0); // unsupported
-            case Float128, Int128 -> paddingLayoutString(16, 0); // unsupported
-            default -> throw new UnsupportedOperationException(primitiveType.toString());
+        case HalfFloat, Char16, WChar -> paddingLayoutString(2, 0); // unsupported
+        case Float128, Int128 -> paddingLayoutString(16, 0); // unsupported
+        default -> throw new UnsupportedOperationException(primitiveType.toString());
         };
     }
 
     private String alignIfNeeded(String layoutPrefix, long align, long expectedAlign) {
         return align > expectedAlign ?
                 STR."\{runtimeHelperName()}.align(\{layoutPrefix}, \{expectedAlign})" :
-                layoutPrefix;
+                    layoutPrefix;
     }
 
     String paddingLayoutString(long size, int indent) {
@@ -280,5 +284,139 @@ abstract class ClassSourceBuilder {
                     .collect(Collectors.joining(", "));
             return new IndexList(indexDecls, indexUses);
         }
+    }
+
+    // private generation
+    
+    protected void emitFunctionWrapper(String mods, String javaName, String nativeName, boolean needsAllocator,
+            boolean isVarArg, List<String> parameterNames, Declaration.Function decl) {
+        MethodType declType = Utils.methodTypeFor(decl.type());
+        List<String> finalParamNames = HeaderFileBuilder.finalizeParameterNames(parameterNames, needsAllocator, isVarArg);
+        if (needsAllocator) {
+            declType = declType.insertParameterTypes(0, SegmentAllocator.class);
+        }
+
+        String retType = declType.returnType().getSimpleName();
+        boolean isVoid = declType.returnType().equals(void.class);
+        String returnNoCast = isVoid ? "" : STR."return ";
+        String returnWithCast = isVoid ? "" : STR."\{returnNoCast}(\{retType})";
+        String paramList = String.join(", ", finalParamNames);
+        String traceArgList = paramList.isEmpty() ?
+                STR."\"\{nativeName}\"" :
+                    STR."\"\{nativeName}\", \{paramList}";
+        incrAlign();
+        if (!isVarArg) {
+            String holderClass = newHolderClassName(javaName);
+            appendLines(STR."""
+
+                    private static class \{holderClass} {
+                    public static final FunctionDescriptor DESC = \{functionDescriptorString(1, decl.type())};
+
+                    public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(
+                    \{runtimeHelperName()}.findOrThrow("\{nativeName}"),
+                    DESC);
+                    }
+                    """);
+            appendBlankLine();
+            emitDocComment(decl, "Function descriptor for:");
+            appendLines(STR."""
+                    public static FunctionDescriptor \{javaName}$descriptor() {
+                    return \{holderClass}.DESC;
+                    }
+                    """);
+            appendBlankLine();
+            emitDocComment(decl, "Downcall method handle for:");
+            appendLines(STR."""
+                    public static MethodHandle \{javaName}$handle() {
+                    return \{holderClass}.HANDLE;
+                    }
+                    """);
+            emitDocComment(decl);
+            appendLines(STR."""
+                    public static \{retType} \{javaName}(\{HeaderFileBuilder.paramExprs(declType, finalParamNames, isVarArg)}) {
+                    var mh$ = \{holderClass}.HANDLE;
+                    try {
+                    if (TRACE_DOWNCALLS) {
+                    traceDowncall(\{traceArgList});
+                    }
+                    \{returnWithCast}mh$.invokeExact(\{paramList});
+                    } catch (Throwable ex$) {
+                    throw new AssertionError("should not reach here", ex$);
+                    }
+                    }
+                    """);
+        } else {
+            String invokerClassName = newHolderClassName(javaName);
+            String paramExprs = HeaderFileBuilder.paramExprs(declType, finalParamNames, isVarArg);
+            appendBlankLine();
+            emitDocComment(decl, "Variadic invoker class for:");
+            appendLines(STR."""
+                    public static class \{invokerClassName} {
+                    private static final FunctionDescriptor BASE_DESC = \{functionDescriptorString(2, decl.type())};
+                    private static final MemorySegment ADDR = \{runtimeHelperName()}.findOrThrow("\{nativeName}");
+
+                    private final MethodHandle handle;
+                    private final FunctionDescriptor descriptor;
+                    private final MethodHandle spreader;
+
+                    private \{invokerClassName}(MethodHandle handle, FunctionDescriptor descriptor, MethodHandle spreader) {
+                    this.handle = handle;
+                    this.descriptor = descriptor;
+                    this.spreader = spreader;
+                    }
+                    """);
+            incrAlign();
+            appendBlankLine();
+            emitDocComment(decl, "Variadic invoker factory for:");
+            appendLines(STR."""
+                    public static \{invokerClassName} makeInvoker(MemoryLayout... layouts) {
+                    FunctionDescriptor desc$ = BASE_DESC.appendArgumentLayouts(layouts);
+                    Linker.Option fva$ = Linker.Option.firstVariadicArg(BASE_DESC.argumentLayouts().size());
+                    var mh$ = Linker.nativeLinker().downcallHandle(ADDR, desc$, fva$);
+                    var spreader$ = mh$.asSpreader(Object[].class, layouts.length);
+                    return new \{invokerClassName}(mh$, desc$, spreader$);
+                    }
+                    """);
+            decrAlign();
+            appendLines(STR."""
+
+                    /**
+                    * {@return the specialized method handle}
+                    */
+                    public MethodHandle handle() {
+                    return handle;
+                    }
+
+                    /**
+                    * {@return the specialized descriptor}
+                    */
+                    public FunctionDescriptor descriptor() {
+                    return descriptor;
+                    }
+
+                    public \{retType} apply(\{paramExprs}) {
+                    try {
+                    if (TRACE_DOWNCALLS) {
+                    traceDowncall(\{traceArgList});
+                    }
+                    \{returnWithCast}spreader.invokeExact(\{paramList});
+                    } catch(IllegalArgumentException | ClassCastException ex$)  {
+                    throw ex$; // rethrow IAE from passing wrong number/type of args
+                    } catch (Throwable ex$) {
+                    throw new AssertionError("should not reach here", ex$);
+                    }
+                    }
+                    }
+                    """);
+        }
+        decrAlign();
+    }
+    
+    String newHolderClassName(String javaName) {
+        String holderClassName = javaName;
+        while (!holderClassNames.add(holderClassName.toLowerCase())) {
+            holderClassName += "$";
+        }
+        return holderClassName;
     }
 }
