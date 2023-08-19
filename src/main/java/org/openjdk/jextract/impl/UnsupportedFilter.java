@@ -36,10 +36,9 @@ import org.openjdk.jextract.Type;
 import org.openjdk.jextract.Type.Declared;
 import org.openjdk.jextract.impl.DeclarationImpl.AnonymousStruct;
 import org.openjdk.jextract.impl.DeclarationImpl.ClangSizeOf;
-import org.openjdk.jextract.impl.DeclarationImpl.JavaName;
 import org.openjdk.jextract.impl.DeclarationImpl.Skip;
 
-import java.io.PrintWriter;
+import java.util.logging.Logger;
 
 /*
  * This visitor marks a number of unsupported construct so that they are skipped by code generation.
@@ -53,12 +52,7 @@ import java.io.PrintWriter;
  */
 public class UnsupportedFilter implements Declaration.Visitor<Void, Declaration> {
 
-    private final PrintWriter errStream;
-
-    public UnsupportedFilter(PrintWriter errStream) {
-        this.errStream = errStream;
-    }
-
+    private static final Logger LOGGER = Logger.getLogger(UnsupportedFilter.class.getSimpleName());
     static Type firstUnsupportedType(Type type, boolean allowVoid) {
         return type.accept(UNSUPPORTED_VISITOR, allowVoid);
     }
@@ -279,6 +273,6 @@ public class UnsupportedFilter implements Declaration.Visitor<Void, Declaration>
     }
 
     private void warn(String msg) {
-        errStream.println("WARNING: " + msg);
+        LOGGER.warning(msg);
     }
 }

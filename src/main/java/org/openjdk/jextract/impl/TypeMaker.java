@@ -30,6 +30,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.lang.foreign.MemoryLayout;
 import org.openjdk.jextract.Declaration;
 import org.openjdk.jextract.Declaration.Scoped;
 import org.openjdk.jextract.Declaration.Typedef;
@@ -37,6 +43,7 @@ import org.openjdk.jextract.Type;
 import org.openjdk.jextract.Type.Delegated;
 import org.openjdk.jextract.Type.Primitive;
 import org.openjdk.jextract.clang.Cursor;
+import org.openjdk.jextract.clang.Index;
 import org.openjdk.jextract.clang.TypeKind;
 
 /**
@@ -100,7 +107,7 @@ class TypeMaker {
             case Elaborated:
                 org.openjdk.jextract.clang.Type canonical = t.canonicalType();
                 if (canonical.equalType(t)) {
-                    return Type.error(t.spelling());
+                    return Type.error(String.format("Unknown type with same canonical type: %s: %s", t.spelling(), ClangUtils.toString(t.getDeclarationCursor())));
                 }
                 return makeType(canonical, treeMaker);
             case ConstantArray: {

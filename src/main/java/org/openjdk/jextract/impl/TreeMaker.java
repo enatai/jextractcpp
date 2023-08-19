@@ -36,6 +36,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import org.openjdk.jextract.Declaration;
@@ -46,6 +48,7 @@ import org.openjdk.jextract.Declaration.Variable;
 import org.openjdk.jextract.Position;
 import org.openjdk.jextract.Type;
 import org.openjdk.jextract.Type.Declared;
+import org.openjdk.jextract.Type.Primitive;
 import org.openjdk.jextract.clang.Cursor;
 import org.openjdk.jextract.clang.CursorKind;
 import org.openjdk.jextract.clang.CursorLanguage;
@@ -67,6 +70,7 @@ import org.openjdk.jextract.impl.DeclarationImpl.DeclarationString;
  * acts as a symbol table.
  */
 class TreeMaker {
+    private static final Logger LOGGER = Logger.getLogger(TreeMaker.class.getSimpleName());
 
     private final Map<Cursor.Key, Declaration> declarationCache = new HashMap<>();
 
@@ -76,7 +80,9 @@ class TreeMaker {
 
     Declaration addAttributes(Declaration d, Cursor c) {
         if (d == null) return null;
+        
         Map<String, List<String>> attributes = new HashMap<>();
+        LOGGER.log(Level.FINE, "Collecting attributes for {0} kind {1}", new Object[]{c.displayName(), c.kind()});
         c.forEach(child -> {
             if (child.isAttribute()) {
                 List<String> attrs = attributes.computeIfAbsent(child.kind().name(), _unused -> new ArrayList<>());
@@ -89,6 +95,7 @@ class TreeMaker {
             }
             d.addAttribute(new ClangAttributes(Collections.unmodifiableMap(attributes)));
         }
+        LOGGER.log(Level.FINE, "Attributes collected");
         return d;
     }
 
@@ -149,6 +156,7 @@ class TreeMaker {
             case VarDecl -> createVar(c, Declaration.Variable.Kind.GLOBAL);
             default -> null; // skip
         };
+        LOGGER.log(Level.FINE, "Tree created");
         if (decl != null) {
             declarationCache.put(key, withDeclarationString(decl, c));
         }
@@ -224,12 +232,15 @@ class TreeMaker {
     }
 
     public Declaration.Function createFunction(Cursor c) {
+        LOGGER.log(Level.FINE, "Creating function: {0}", c.displayName());
         checkCursor(c, CursorKind.FunctionDecl);
         List<Declaration.Variable> params = new ArrayList<>();
         for (int i = 0 ; i < c.numberOfArgs() ; i++) {
             params.add((Declaration.Variable)createTree(c.getArgument(i)));
         }
+        LOGGER.log(Level.FINE, "Creating type");
         Type type = toType(c);
+        LOGGER.log(Level.FINE, "Creating canonical type");
         Type funcType = canonicalType(type);
         return withNestedTypes(Declaration.function(CursorPosition.of(c), c.spelling(), (Type.Function)funcType,
                 params.toArray(new Declaration.Variable[0])), c, true);
@@ -276,6 +287,7 @@ class TreeMaker {
     }
 
     public Declaration.Scoped createHeader(Cursor c, List<Declaration> decls) {
+        LOGGER.log(Level.FINE, "Creating heaader");
         return Declaration.toplevel(CursorPosition.of(c), filterHeaderDeclarations(decls).toArray(new Declaration[0]));
     }
 
@@ -532,7 +544,7 @@ class TreeMaker {
 
     private void checkCursor(Cursor c, CursorKind k) {
         if (c.kind() != k) {
-            throw new IllegalArgumentException("Invalid cursor kind: " + k);
+            throw new IllegalArgumentException(String.format("Invalid cursor kind: expected %s, actual %s", c.kind(), k));
         }
     }
 

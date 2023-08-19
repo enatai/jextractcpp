@@ -26,6 +26,7 @@
 
 module org.openjdk.jextract {
     requires transitive java.compiler;
+    requires java.logging;
     exports org.openjdk.jextract;
 
     provides java.util.spi.ToolProvider with
