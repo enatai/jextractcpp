@@ -36,10 +36,8 @@ import org.openjdk.jextract.Type;
 import org.openjdk.jextract.Type.Declared;
 import org.openjdk.jextract.impl.DeclarationImpl.AnonymousStruct;
 import org.openjdk.jextract.impl.DeclarationImpl.ClangSizeOf;
-import org.openjdk.jextract.impl.DeclarationImpl.JavaName;
 import org.openjdk.jextract.impl.DeclarationImpl.Skip;
 
-import java.io.PrintWriter;
 
 /*
  * This visitor marks a number of unsupported construct so that they are skipped by code generation.

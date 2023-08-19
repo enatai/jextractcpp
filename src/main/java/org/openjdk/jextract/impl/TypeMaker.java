@@ -100,7 +100,7 @@ class TypeMaker {
             case Elaborated:
                 org.openjdk.jextract.clang.Type canonical = t.canonicalType();
                 if (canonical.equalType(t)) {
-                    return Type.error(t.spelling());
+                    return Type.error(String.format("Unknown type with same canonical type: %s: %s", t.spelling(), ClangUtils.toString(t.getDeclarationCursor())));
                 }
                 return makeType(canonical, treeMaker);
             case ConstantArray: {

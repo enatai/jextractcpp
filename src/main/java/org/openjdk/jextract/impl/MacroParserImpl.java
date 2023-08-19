@@ -46,11 +46,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 class MacroParserImpl implements AutoCloseable {
-
+    private static final java.util.logging.Logger LOGGER = java.util.logging.Logger.getLogger(MacroParserImpl.class.getSimpleName());
     private final ClangReparser reparser;
     private final TreeMaker treeMaker;
     final MacroTable macroTable;
@@ -120,7 +121,8 @@ class MacroParserImpl implements AutoCloseable {
             tu.save(precompiled);
             this.logger = logger;
             this.macro = Files.createTempFile("jextract$", cpp ? ".hpp" : ".h");
-            this.macro.toFile().deleteOnExit();
+            // if we run in debug mode we keep the file for debug purposes 
+            if (!JextractTool.DEBUG) this.macro.toFile().deleteOnExit();
             String[] patchedArgs = Stream.concat(
                 Stream.of(
                     // Avoid system search path, use bundled instead
@@ -129,10 +131,12 @@ class MacroParserImpl implements AutoCloseable {
                     // precompiled header
                     "-include-pch", precompiled.toAbsolutePath().toString()),
                 args.stream()).toArray(String[]::new);
+            LOGGER.log(Level.FINE, "Running macro parser");
             this.macroUnit = macroIndex.parse(macro.toAbsolutePath().toString(),
                     this::processDiagnostics,
                     false, //add serialization support (needed for macros)
                     patchedArgs);
+            LOGGER.log(Level.FINE, "Macro parser completed");
         }
 
         void processDiagnostics(Diagnostic diag) {

@@ -46,12 +46,16 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.ResourceBundle;
+import java.util.logging.LogManager;
 import java.util.spi.ToolProvider;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -63,6 +67,12 @@ import java.util.stream.Stream;
  * on top of the underlying memory access var handles. For each struct, a static layout field is generated.
  */
 public final class JextractTool {
+    private static final String MESSAGES_RESOURCE = "org.openjdk.jextract.impl.resources.Messages";
+
+    private static final ResourceBundle MESSAGES_BUNDLE;
+    static {
+        MESSAGES_BUNDLE = ResourceBundle.getBundle(MESSAGES_RESOURCE, Locale.getDefault());
+    }
 
     public static final boolean DEBUG = true;//Boolean.getBoolean("jextract.debug");
     public final Optional<Path> PLATFORM_INCLUDE_PATH = inferPlatformIncludePath();
@@ -80,6 +90,10 @@ public final class JextractTool {
 
     private JextractTool(Logger logger) {
         this.logger = logger;
+    }
+
+    private static String format(String msgId, Object... args) {
+        return new MessageFormat(MESSAGES_BUNDLE.getString(msgId)).format(args);
     }
 
     private static Path generateTmpSource(List<Path> headers) {
@@ -187,9 +201,21 @@ public final class JextractTool {
      */
     public static void main(String[] args) {
         JextractTool m = new JextractTool(Logger.DEFAULT);
+        setupLogging();
         System.exit(m.run(args));
     }
 
+
+    private static void setupLogging() {
+        var inputStream = ClassLoader.getSystemResourceAsStream(DEBUG? "logging-jextract-debug.properties": "logging-jextract.properties");
+        if (inputStream == null) return;
+        try {
+            LogManager.getLogManager().readConfiguration(inputStream);
+        } catch (SecurityException | IOException e) {
+            System.err.println("Failed to setup logging");
+            e.printStackTrace();
+        }
+    }
 
     // Option handling code
 
@@ -391,7 +417,7 @@ public final class JextractTool {
         Path compileFlagsTxt = Paths.get(".", "compile_flags.txt");
         if (Files.exists(compileFlagsTxt)) {
             try {
-                Files.lines(compileFlagsTxt).forEach(opt -> builder.addClangArg(opt));
+                Files.lines(compileFlagsTxt).filter(s -> !s.startsWith("#")).forEach(opt -> builder.addClangArg(opt));
             } catch (IOException ioExp) {
                 logger.fatal(ioExp, "jextract.bad.compile.flags", ioExp.getMessage());
                 return OPTION_ERROR;

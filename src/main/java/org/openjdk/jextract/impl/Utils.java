@@ -40,6 +40,10 @@ import org.openjdk.jextract.clang.Cursor;
 import org.openjdk.jextract.clang.CursorKind;
 import org.openjdk.jextract.impl.DeclarationImpl.NestedDeclarations;
 
+import org.openjdk.jextract.clang.SourceLocation;
+import org.openjdk.jextract.clang.SourceLocation.Location;
+import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
 import java.lang.foreign.AddressLayout;
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemorySegment;
@@ -50,6 +54,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * General utility functions
