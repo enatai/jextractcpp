@@ -30,13 +30,19 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import org.openjdk.jextract.clang.libclang.Index_h;
-
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.openjdk.jextract.clang.libclang.Index_h.C_POINTER;
 
 public class Index extends ClangDisposable {
+    private static final Logger LOGGER = Logger.getLogger(Index.class.getSimpleName());
 
     Index(MemorySegment addr) {
         super(addr, Index_h::clang_disposeIndex);
@@ -77,6 +83,9 @@ public class Index extends ClangDisposable {
                 cargs.set(C_POINTER, i * C_POINTER.byteSize(), arena.allocateUtf8String(args[i]));
             }
             MemorySegment outAddress = arena.allocate(C_POINTER);
+            LOGGER.log(Level.FINE, "Calling clang to parse translation unit");
+            LOGGER.log(Level.FINE, "clang arguments {0}", Arrays.toString(args));
+            LOGGER.log(Level.FINE, "input file {0}", file);
             ErrorCode code = ErrorCode.valueOf(Index_h.clang_parseTranslationUnit2(
                     ptr,
                     src,
@@ -85,15 +94,16 @@ public class Index extends ClangDisposable {
                     0,
                     options,
                     outAddress));
-
             MemorySegment tu = outAddress.get(C_POINTER, 0);
             TranslationUnit rv = new TranslationUnit(tu);
             // even if we failed to parse, we might still have diagnostics
+            LOGGER.log(Level.FINE, "Processing clang diagnostics results");
             rv.processDiagnostics(dh);
-
             if (code != ErrorCode.Success) {
+                LOGGER.log(Level.SEVERE, "Parsing failed with return code {0}", code);
                 throw new ParsingFailedException(Path.of(file).toAbsolutePath(), code);
             }
+            LOGGER.log(Level.FINE, "Translation unit parsing completed");
 
             return rv;
         }

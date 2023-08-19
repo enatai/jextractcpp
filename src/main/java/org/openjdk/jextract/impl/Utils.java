@@ -32,12 +32,15 @@ import org.openjdk.jextract.Type.Delegated;
 import org.openjdk.jextract.Type.Function;
 import org.openjdk.jextract.clang.Cursor;
 import org.openjdk.jextract.clang.CursorKind;
-
+import org.openjdk.jextract.clang.SourceLocation;
+import org.openjdk.jextract.clang.SourceLocation.Location;
 import javax.tools.JavaFileObject;
 import javax.tools.SimpleJavaFileObject;
 import java.lang.foreign.MemoryLayout;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * General utility functions
