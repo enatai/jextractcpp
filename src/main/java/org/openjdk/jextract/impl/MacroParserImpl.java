@@ -82,6 +82,7 @@ class MacroParserImpl implements AutoCloseable {
      */
     Optional<Declaration.Constant> parseConstant(Cursor cursor, String name, String[] tokens) {
         if (cursor.isMacroFunctionLike()) {
+            LOGGER.log(Level.FINER, "Macro is a function, ignoring...");
             return Optional.empty();
         } else if (tokens.length == 2) {
             //check for fast path
@@ -294,10 +295,12 @@ class MacroParserImpl implements AutoCloseable {
 
         void enterMacro(String name, String[] tokens, Position position) {
             Unparsed unparsed = new Unparsed(name, tokens, position);
+            LOGGER.log(Level.FINER, "Postpone macro parsing for later");
             macrosByMangledName.put(unparsed.mangledName(), unparsed);
         }
 
         public List<Declaration.Constant> reparseConstants() {
+            LOGGER.log(Level.FINER, "Reparsing constants");
             int last = -1;
             while (macrosByMangledName.size() > 0 && last != macrosByMangledName.size()) {
                 last = macrosByMangledName.size();

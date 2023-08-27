@@ -54,7 +54,7 @@ import org.openjdk.jextract.clang.TypeKind;
  * mutually referring pointers are dealt with correctly (i.e. by breaking cycles).
  */
 class TypeMaker {
-
+    private static final Logger LOGGER = Logger.getLogger(TypeMaker.class.getSimpleName());
     static Type makeType(org.openjdk.jextract.clang.Type t, TreeMaker treeMaker) {
         switch(t.kind()) {
             case Auto:

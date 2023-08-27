@@ -37,6 +37,7 @@ import org.openjdk.jextract.clang.TranslationUnit;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -63,7 +64,8 @@ public class Parser {
                 },
             true, args.toArray(new String[0])) ;
             MacroParserImpl macroParser = MacroParserImpl.make(treeMaker, tu, args,
-                    path.toString().endsWith(".hpp"))) {
+                    path.toString().endsWith(".hpp")))
+        {
 
             List<Declaration> decls = new ArrayList<>();
             Cursor tuCursor = tu.getCursor();
@@ -71,6 +73,7 @@ public class Parser {
             tuCursor.forEach(c -> {
                 SourceLocation loc = c.getSourceLocation();
                 if (loc == null) {
+                    LOGGER.log(Level.FINER, "Source location empty, ignoring ...");
                     return;
                 }
 
@@ -79,27 +82,37 @@ public class Parser {
                     return;
                 }
 
+                LOGGER.log(Level.FINER, "Parsing cursor kind: {0}", c.kind());
                 if (c.isDeclaration()) {
+                    LOGGER.log(Level.FINER, "Parsing declaration in file: {0}", path);
+                    var count = new int[1];
                     if (c.kind() == CursorKind.UnexposedDecl ||
                             c.kind() == CursorKind.Namespace) {
                         c.forEach(t -> {
                             Declaration declaration = treeMaker.createTree(t);
                             if (declaration != null) {
+                                count[0]++;
                                 decls.add(declaration);
                             }
                         });
                     } else {
                         Declaration decl = treeMaker.createTree(c);
                         if (decl != null) {
+                            count[0]++;
                             decls.add(decl);
                         }
                     }
+                    LOGGER.log(Level.FINER, "Number of declarations parsed: {0}", count[0]);
                 } else if (isMacro(c) && src.path() != null) {
+                    LOGGER.log(Level.FINER, "Parsing macro definition in file: {0}", path);
                     SourceRange range = c.getExtent();
                     String[] tokens = c.getTranslationUnit().tokens(range);
+                    LOGGER.log(Level.FINER, "Tokens: {0}", Arrays.toString(tokens));
                     Optional<Declaration.Constant> constant = macroParser.parseConstant(c, c.spelling(), tokens);
                     if (constant.isPresent()) {
                         decls.add(constant.get());
+                    } else {
+                        LOGGER.log(Level.FINER, "No constants present");
                     }
                 } else {
                     LOGGER.log(Level.FINE, "Parsing of cursor is not supported and will be ignored: {0}", ClangUtils.toString(c));
