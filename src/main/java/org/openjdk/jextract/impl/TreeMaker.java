@@ -81,7 +81,7 @@ class TreeMaker {
         if (d == null) return null;
         
         Map<String, List<String>> attributes = new HashMap<>();
-        LOGGER.log(Level.FINE, "Collecting attributes for {0} kind {1}", new Object[]{c.displayName(), c.kind()});
+        LOGGER.log(Level.FINER, "Collecting attributes for [{0}]", ClangUtils.toString(c));
         c.forEach(child -> {
             if (child.isAttribute()) {
                 List<String> attrs = attributes.computeIfAbsent(child.kind().name(), _unused -> new ArrayList<>());
@@ -94,7 +94,7 @@ class TreeMaker {
             }
             d.addAttribute(new ClangAttributes(Collections.unmodifiableMap(attributes)));
         }
-        LOGGER.log(Level.FINE, "Attributes collected");
+        LOGGER.log(Level.FINER, "Attributes collected: {0}", d);
         return d;
     }
 
@@ -104,6 +104,7 @@ class TreeMaker {
 
     public Declaration createTree(Cursor c) {
         Objects.requireNonNull(c);
+        LOGGER.log(Level.FINER, "Creating a tree for cursor: {0}", ClangUtils.toString(c));
         CursorLanguage lang = c.language();
         LinkageKind linkage = c.linkage();
 
@@ -133,6 +134,7 @@ class TreeMaker {
     }
 
     private Declaration createTreeInternal(Cursor c) {
+        LOGGER.log(Level.FINER, "Creating a tree for cursor: {0}", ClangUtils.toString(c));
         Position pos = CursorPosition.of(c);
         if (pos == Position.NO_POSITION) return null; // intrinsic, skip
         // dedup multiple declarations that point to the same source location

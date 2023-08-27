@@ -41,6 +41,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.lang.model.SourceVersion;
 
 /*
@@ -49,6 +51,7 @@ import javax.lang.model.SourceVersion;
  * OutputFactory via the lookup methods provided by this class.
  */
 public final class NameMangler implements Declaration.Visitor<Void, Declaration> {
+    private static final Logger LOGGER = Logger.getLogger(TreeMaker.class.getSimpleName());
     private final String headerName;
 
     /*
@@ -134,7 +137,9 @@ public final class NameMangler implements Declaration.Visitor<Void, Declaration>
 
     @Override
     public Void visitFunction(Declaration.Function func, Declaration parent) {
-        JavaName.with(func, makeJavaName(func));
+        var funcJavaName = makeJavaName(func);
+        LOGGER.log(Level.FINER, "Map function name: from native [{0}] to Java [{1}]", new Object[] {func.name(), funcJavaName});
+        JavaName.with(func, funcJavaName);
         int i = 0;
         for (Declaration.Variable param : func.parameters()) {
             Type.Function f = Utils.getAsFunctionPointer(param.type());
