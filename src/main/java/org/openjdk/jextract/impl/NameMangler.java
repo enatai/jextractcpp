@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.lang.model.SourceVersion;
 
 /*
@@ -45,6 +47,7 @@ import javax.lang.model.SourceVersion;
  * the collected names using getters.
  */
 final class NameMangler implements Declaration.Visitor<Void, Declaration> {
+    private static final Logger LOGGER = Logger.getLogger(TreeMaker.class.getSimpleName());
     private final String headerName;
 
     private static class Scope {
@@ -207,7 +210,9 @@ final class NameMangler implements Declaration.Visitor<Void, Declaration> {
 
     @Override
     public Void visitFunction(Declaration.Function func, Declaration parent) {
-        putJavaName(func, makeJavaName(func));
+        String funcJavaName = makeJavaName(func);
+        LOGGER.log(Level.FINER, "Map function name: from native [{0}] to Java [{1}]", new Object[] {func.name(), funcJavaName});
+        putJavaName(func, funcJavaName);
         int i = 0;
         for (Declaration.Variable param : func.parameters()) {
             Type.Function f = Utils.getAsFunctionPointer(param.type());
