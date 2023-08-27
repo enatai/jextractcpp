@@ -62,7 +62,7 @@ class TreeMaker {
     Type.Declared parent;
 
     Map<String, List<Constable>> collectAttributes(Cursor c) {
-        LOGGER.log(Level.FINE, "Collecting attributes for {0} kind {1}", new Object[]{c.displayName(), c.kind()});
+        LOGGER.log(Level.FINER, "Collecting attributes for [{0}]", ClangUtils.toString(c));
         Map<String, List<Constable>> attributeMap = new HashMap<>();
         c.forEach(child -> {
             if (child.isAttribute()) {
@@ -73,12 +73,13 @@ class TreeMaker {
         if (!c.getMangling().equals(c.spelling())) {
             attributeMap.put("LINK", List.of(c.getMangling()));
         }
-        LOGGER.log(Level.FINE, "Attributes collected");
+        LOGGER.log(Level.FINER, "Attributes collected: {0}", attributeMap);
         return attributeMap;
     }
 
     public Declaration createTree(Cursor c) {
         Objects.requireNonNull(c);
+        LOGGER.log(Level.FINER, "Creating a tree for cursor: {0}", ClangUtils.toString(c));
         CursorLanguage lang = c.language();
         LinkageKind linkage = c.linkage();
 
@@ -109,6 +110,7 @@ class TreeMaker {
     }
 
     private Declaration createTreeInternal(Cursor c) {
+        LOGGER.log(Level.FINER, "Creating a tree for cursor: {0}", ClangUtils.toString(c));
         var r = switch (c.kind()) {
             case EnumDecl -> createEnum(c);
             case EnumConstantDecl -> createEnumConstant(c);

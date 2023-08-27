@@ -50,16 +50,16 @@ import java.util.logging.Level;
 class ClangUtils {
 
     public static String toString(Cursor c) {
-        var str = String.format("name [%s], kind [%s]", c.displayName(), c.kind());
+        var str = String.format("name=[%s], kind=[%s]", c.displayName(), c.kind());
         if (!Objects.equals(c.displayName(), c.spelling()))
-            str += ", spelling [" + c.spelling() + "]";
+            str += ", spelling=[" + c.spelling() + "]";
         str += Optional.ofNullable(c.getSourceLocation()).map(SourceLocation::getFileLocation).map(loc -> {
-            return String.format(", file location %s(%s)", loc.path(), loc.line());
+            return String.format(", file location=%s(%s)", loc.path(), loc.line());
         }).orElse("");
         return "clang cursor[" + str + "]";
     }
 
     public static String toString(Type t) {
-        return String.format("clang type[type [%s], kind [%s], canonical type [%s]]", t.spelling(), t.kind(), t.canonicalType().spelling());
+        return String.format("clang type[type=[%s], kind=[%s], canonical type=[%s]]", t.spelling(), t.kind(), t.canonicalType().spelling());
     }
 }

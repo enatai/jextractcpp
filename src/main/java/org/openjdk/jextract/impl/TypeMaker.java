@@ -46,6 +46,7 @@ import org.openjdk.jextract.clang.Index;
 import org.openjdk.jextract.clang.TypeKind;
 
 class TypeMaker {
+    private static final Logger LOGGER = Logger.getLogger(TypeMaker.class.getSimpleName());
     TreeMaker treeMaker;
     private final Map<org.openjdk.jextract.clang.Type, Type> typeCache = new HashMap<>();
     private List<ClangTypeReference> unresolved = new ArrayList<>();
@@ -101,6 +102,7 @@ class TypeMaker {
     }
 
     Type makeType(org.openjdk.jextract.clang.Type t) {
+        LOGGER.log(Level.FINER, "Creating Java type for {0}", ClangUtils.toString(t));
         Type rv = typeCache.get(t);
         if (rv != null) {
             return rv;
@@ -109,6 +111,7 @@ class TypeMaker {
         if (null != rv && typeCache.put(t, rv) != null) {
             throw new ConcurrentModificationException();
         }
+        LOGGER.log(Level.FINER, "Adding pair [clang type, Java type] into type cache: [{0}, {1}]", new Object[] {t.spelling(), rv.getClass().getSimpleName()});
         return rv;
     }
 

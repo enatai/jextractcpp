@@ -113,6 +113,7 @@ public class Index extends ClangDisposable {
         int rv = Index_h.CXTranslationUnit_ForSerialization();
         rv |= Index_h.CXTranslationUnit_SkipFunctionBodies();
         if (detailedPreprocessorRecord) {
+            LOGGER.log(Level.FINER, "Enabling detailedPreprocessorRecord");
             rv |= Index_h.CXTranslationUnit_DetailedPreprocessingRecord();
         }
         return rv;
