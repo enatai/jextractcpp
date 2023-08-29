@@ -40,6 +40,7 @@ import java.lang.foreign.MemoryLayout;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Level;
@@ -61,5 +62,9 @@ class ClangUtils {
 
     public static String toString(Type t) {
         return String.format("clang type[type=[%s], kind=[%s], canonical type=[%s]]", t.spelling(), t.kind(), t.canonicalType().spelling());
+    }
+
+    public static String getNativeName(org.openjdk.jextract.Declaration.Function funcTree) {
+        return (String)funcTree.getAttribute("LINK").orElse(List.of(funcTree.name())).get(0);
     }
 }

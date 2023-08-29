@@ -100,7 +100,7 @@ abstract class HeaderFileBuilder extends ClassSourceBuilder {
     @Override
     public void addFunction(Declaration.Function funcTree, FunctionDescriptor descriptor,
             String javaName, List<String> parameterNames) {
-        String nativeName = funcTree.name();
+        String nativeName = ClangUtils.getNativeName(funcTree);
         boolean isVarargs = funcTree.type().varargs();
 
         Constant mhConstant = constants().addDowncallMethodHandle(nativeName, descriptor, isVarargs)

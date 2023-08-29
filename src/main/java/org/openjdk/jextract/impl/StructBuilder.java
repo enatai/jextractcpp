@@ -139,7 +139,7 @@ class StructBuilder extends ClassSourceBuilder {
 
     @Override
     public void addFunction(Function funcTree, FunctionDescriptor descriptor, String javaName, List<String> parameterNames) {
-        String nativeName = (String)funcTree.getAttribute("LINK").orElse(List.of(funcTree.name())).get(0);
+        String nativeName = ClangUtils.getNativeName(funcTree);
         boolean isVarargs = funcTree.type().varargs();
 
         Constant mhConstant = constants().addDowncallMethodHandle(nativeName, descriptor, isVarargs)
