@@ -66,4 +66,10 @@ class ClangUtils {
         return String.format("clang type[type=[%s], kind=[%s], canonical type=[%s]]",
                 t.spelling(), kind, t.canonicalType().spelling());
     }
+
+    public static String getNativeName(org.openjdk.jextract.Declaration.Function funcTree) {
+        return funcTree.getAttribute(Declaration.ClangAttributes.class)
+            .map(attr -> attr.attributes().get("LINK"))
+            .orElse(List.of(funcTree.name())).get(0);
+    }
 }
