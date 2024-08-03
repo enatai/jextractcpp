@@ -1,3 +1,22 @@
+**jextractcpp** - Java FFM bindings generation for C++.
+
+It is a fork of [jextract](https://github.com/openjdk/jextract) with initial C++ changes taken from `cxx` branch from [mcimadamore](https://github.com/mcimadamore/jextract/tree/cxx).
+
+Changes from `jextractcpp` periodically rebased on latest changes from `jextract`. Rebase helps to keep cpp changes always on top of whatever changes were done in `jextract` master branch (and not spread them across it). This helps to track difference between two projects.
+
+# Sync with jextract
+
+1. Sync master branch from `jextract` repository to `jextractcpp`.
+
+2. Rebase:
+```
+git checkout -b cxx2-outdated-YYYYMMDD
+git checkout master
+git pull
+git checkout cxx2
+git rebase master
+```
+
 ## Jextract
 
 `jextract` is a tool which mechanically generates Java bindings from a native library headers. This tools leverages the [clang C API](https://clang.llvm.org/doxygen/group__CINDEX.html) in order to parse the headers associated with a given native library, and the generated Java bindings build upon the [Foreign Function & Memory API](https://openjdk.java.net/jeps/424). The `jextract` tool was originally developed in the context of [Project Panama](https://openjdk.java.net/projects/panama/) (and then made available in the Project Panama [Early Access binaries](https://jdk.java.net/panama/)).
