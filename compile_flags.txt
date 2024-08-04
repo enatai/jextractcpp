@@ -1,0 +1,4 @@
+-xc++
+-std=gnu++20
+-Xpreprocessor
+-detailed-preprocessing-record

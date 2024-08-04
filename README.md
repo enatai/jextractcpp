@@ -17,6 +17,23 @@ git checkout cxx2
 git rebase master
 ```
 
+# Troubleshooting
+
+## ASTReadError
+
+```
+2024-08-03 16:52:08 [SEVERE ] org.openjdk.jextract.JextractTool run - Failed to parse cpp: ASTReadError
+org.openjdk.jextract.clang.Index$ParsingFailedException: Failed to parse cpp: ASTReadError
+	at org.openjdk.jextract@21/org.openjdk.jextract.clang.Index.parseTU(Index.java:104)
+	at org.openjdk.jextract@21/org.openjdk.jextract.clang.Index.parse(Index.java:124)
+	at org.openjdk.jextract@21/org.openjdk.jextract.impl.Parser.parse(Parser.java:58)
+	at org.openjdk.jextract@21/org.openjdk.jextract.JextractTool.parse(JextractTool.java:114)
+	at org.openjdk.jextract@21/org.openjdk.jextract.JextractTool.run(JextractTool.java:474)
+	at org.openjdk.jextract@21/org.openjdk.jextract.JextractTool.main(JextractTool.java:175)
+```
+
+Make sure to run `jextract` from the folder with [compile_flags.txt](compile_flags.txt) file inside.
+
 ## Jextract
 
 `jextract` is a tool which mechanically generates Java bindings from a native library headers. This tools leverages the [clang C API](https://clang.llvm.org/doxygen/group__CINDEX.html) in order to parse the headers associated with a given native library, and the generated Java bindings build upon the [Foreign Function & Memory API](https://openjdk.java.net/jeps/424). The `jextract` tool was originally developed in the context of [Project Panama](https://openjdk.java.net/projects/panama/) (and then made available in the Project Panama [Early Access binaries](https://jdk.java.net/panama/)).
