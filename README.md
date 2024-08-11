@@ -4,6 +4,19 @@ It is a fork of [jextract](https://github.com/openjdk/jextract) with initial C++
 
 Changes from `jextractcpp` periodically rebased on latest changes from `jextract`. Rebase helps to keep cpp changes always on top of whatever changes were done in `jextract` master branch (and not spread them across it). This helps to track difference between two projects.
 
+Example command to extract Java code for `foo.cpp`:
+
+```
+build/jextract/bin/jextract -Djextract.debug=true \
+ -Dlibclang.debug=true \
+ --output cppexperiments/src/gen/java \
+ -t libcppexperiments \
+ --header-class-name Happy \
+ -I libcppexperiments/src/main/public \
+ -lcppexperiments \
+ foo.hpp 
+```
+
 # Sync with jextract
 
 1. Sync master branch from `jextract` repository to `jextractcpp`.
